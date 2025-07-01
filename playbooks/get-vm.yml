@@ -1,0 +1,30 @@
+---
+- name: Get official Arch Linux .qcow2 image
+  hosts: localhost
+  become: yes
+  vars:
+    mirror1: https://mirrors.mit.edu/archlinux/images/latest
+    mirror2: https://mirrors.bjg.at/arch/images/latest
+    image: Arch-Linux-x86_64-basic.qcow2
+    hash: Arch-Linux-x86_64-basic.qcow2.SHA256
+    sig: Arch-Linux-x86_64-basic.qcow2.sig
+
+  tasks:
+    - name: Download Signature
+      ansible.builtin.get_url:
+        url: "{{ mirror1  }}/{{ sig }}"
+        dest: .
+        register: image_hash
+
+    - name: Download Hash (SHA256)
+      ansible.builtin.get_url:
+        url: "{{ mirror1  }}/{{ hash }}"
+        dest: .
+
+    - name: Download Image
+      ansible.builtin.get_url: 
+        url: "{{ mirror1  }}/{{ image }}"
+        dest: .
+
+  
+    #- name: Verify Image

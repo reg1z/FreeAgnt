@@ -1,0 +1,62 @@
+# Main playbook
+---
+- name: Setup Agentic Env
+  hosts: localhost
+  become: yes
+
+  tasks:
+    - name: Get the current user name
+      ansible.builtin.shell: whoami
+      register: current_user_result
+      changed_when: false # This command doesn't change anything
+    - name: Set a fact for the current user
+      ansible.builtin.set_fact:
+        current_linux_user: "{{ current_user_result.stdout }}"
+
+    - name: Install QEMU + needed dependencies (Arch)
+      ansible.builtin.package:
+        name:
+          - gpg
+          - libvirt
+          - qemu-desktop
+          - virt-manager
+          - virt-viewer
+          - dnsmasq
+          - openbsd-netcat
+          - iptables-nft
+          - edk2-ovmf
+          - bridge-utils
+        state: present
+        become: yes
+        update_cache: yes
+
+    - name: Set up libvirt daemon, network, and permissions. Add user to libvirt group.
+      ansible.builtin.shell: |
+        sudo systemctl enable libvirtd.service
+        sudo systemctl start libvirtd.service
+        sudo usermod -aG libvirt {{ current_linux_user }} || echo "Could not add user to libvirt group" >&2
+        sudo bash -c '
+          sed -i "s/^#unix_sock_group = \"libvirt\"/unix_sock_group = \"libvirt\"/" /etc/libvirt/libvirtd.conf
+          sed -i "s/^#unix_sock_rw_perms = \"0770\"/unix_sock_rw_perms = \"0770\"/" /etc/libvirt/libvirtd.conf
+        '
+        sudo systemctl restart libvirtd.service || echo "Could not restart libvirtd service" >&2
+        echo "Now enabling the default libvirt network for NAT connectivity..."
+        sudo bash -c '
+          echo "firewall_backend = \"iptables\"" > /etc/libvirt/network.conf
+          virsh net-list --all | grep -q "default" || virsh net-create /etc/libvirt/qemu/networks/default.xml
+          virsh net-list | grep -q "default.*active" || virsh net-start default
+          virsh net-autostart default
+        '
+        echo "QEMU and virt-manager installation completed successfully!"
+#    - name: Obtain an Arch ISO
+#    - name: Create a new x86_64 VM using QEMU CLI
+
+
+
+
+
+
+
+#    - name: Install Debian
+
+#    - name: Access the VM and install dependencies
