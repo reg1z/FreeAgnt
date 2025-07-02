@@ -1,8 +1,7 @@
-# AgentEnv
+# FreeAgnt
+An Ansible playbook that gives you an isolated, pre-built, ~~Debian~~ Arch development environment tailored for AI-integrated workflows.
 
 **(WIP)**
-
-An Ansible playbook that gives you an isolated, pre-built, ~~Debian~~ Arch development environment tailored for AI-integrated workflows.
 
 ### Goals
 - Automate setup of an isolated Virtual Machine facilitating a secure development environment where AI agents can securely roam free.
