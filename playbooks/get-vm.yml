@@ -1,7 +1,8 @@
 ---
 - name: Get official Arch Linux .qcow2 image
   hosts: localhost
-  become: yes
+  become: no
+  gather_facts: no
   vars:
     mirror1: https://mirrors.mit.edu/archlinux/images/latest
     mirror2: https://mirrors.bjg.at/arch/images/latest
@@ -10,21 +11,71 @@
     sig: Arch-Linux-x86_64-basic.qcow2.sig
 
   tasks:
+    - name: Get ansible_env
+      ansible.builtin.setup:
+        filter: ansible_env
+
+    - name: Create directory
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/arch-boxes"
+        state: directory
+
+    - name: Get PGP key from arch-boxes repo
+      ansible.builtin.shell: |
+        curl -s https://raw.githubusercontent.com/archlinux/arch-boxes/refs/heads/master/README.md | awk '/-----BEGIN PGP PUBLIC KEY BLOCK-----/,/-----END PGP PUBLIC KEY BLOCK-----/'; \
+      register: gpg_key
+
+    - name: Store PGP key
+      ansible.builtin.copy:
+        content: "{{ gpg_key.stdout }}"
+        dest: "{{ ansible_env.HOME }}/arch-boxes/arch-boxes-pgp.asc"
+
+    - name: Add PGP key to keyring
+      ansible.builtin.command: gpg --import "{{ ansible_env.HOME }}/arch-boxes/arch-boxes-pgp.asc"
+
     - name: Download Signature
       ansible.builtin.get_url:
         url: "{{ mirror1  }}/{{ sig }}"
-        dest: .
-        register: image_hash
+        dest: "{{ ansible_env.HOME }}/arch-boxes/{{ sig }}"
+      register: image_hash
 
     - name: Download Hash (SHA256)
       ansible.builtin.get_url:
         url: "{{ mirror1  }}/{{ hash }}"
-        dest: .
+        dest: "{{ ansible_env.HOME }}/arch-boxes/{{ hash }}"
 
     - name: Download Image
       ansible.builtin.get_url: 
         url: "{{ mirror1  }}/{{ image }}"
-        dest: .
+        dest: "{{ ansible_env.HOME }}/arch-boxes/{{ image }}"
+    
+    - name: Check signature
+      ansible.builtin.command: |
+        gpg --verify {{ ansible_env.HOME }}/arch-boxes/{{ sig }} {{ ansible_env.HOME }}/arch-boxes/{{ image }}
+      register: gpg_verification
+
+    - name: Show gpg_verification value
+      ansible.builtin.debug:
+        var: gpg_verification.stderr_lines
+
+    - name: Verify Image
+      ansible.builtin.command:
+        chdir: "{{ ansible_env.HOME }}/arch-boxes"
+        cmd: sha256sum -c {{ hash }}
+      register: hash_verification
+    
+    - name: Show hash verification
+      ansible.builtin.debug:
+        var: hash_verification.stdout
+        
+    - name: Remove PGP key from keyring
+      ansible.builtin.shell: |
+        KEY_ID=$(gpg --show-keys "{{ ansible_env.HOME }}/arch-boxes/arch-boxes-pgp.asc" | sed -n '2p' | awk '{print $1}')
+        gpg --delete-key --batch --yes "$KEY_ID"
+
+        
+        
+
 
   
     #- name: Verify Image
