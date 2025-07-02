@@ -1,17 +1,62 @@
 #cloud-config
-users:
-  - name: arch
-    password: arch
-    chpasswd:
-      expire: false
-    ssh_pwauth: true
+keyboard: # Set the keyboard layout
+  layout: us
+  variant: qwerty
 
+locale: en_US # Set the locale
+
+# Timezone
+timezone: UTC
+
+# Hostname
+preserve_hostname: false
+hostname: AgentEnv
+create_hostname_file: true
+manage_etc_hosts: false
+
+# Grow the root partition/filesystem to the full size of the disk
+growpart: 
+  mode: auto
+  devices: ['/']
+  ignore_growroot_disabled: false
+resize_rootfs: true
+
+# Define the default user
+user:
+  uid: 1000
+  name: arch
+  chpasswd:
+    expire: false
+    users:
+    - { name: arch, password: arch, type: text }
+  lock_passwd: false
+  ssh_pwauth: true
+  sudo: null
+  groups:
+    - wheel
+    - sudo
+  shell: /usr/bin/zsh
+
+# Configure SSH
+disable_root: true
+allow_public_ssh_keys: true # If true, will import the public SSH keys from the datasource's metadata to the users's .ssh/authorized_keys file.
+# ssh_authorized_keys: # Add your public SSH keys here (array/list)
+
+# Update the system and install packages
+package_update: true
+package_upgrade: true
+package_reboot_if_required: true
 packages:
   # Core packages
   - git
   - base-devel
   - gnome
   - polkit-gnome
+  # Support for different packaging formats
+  - fuse2  # for appimages
+  - flatpak
+  # Shells
+  - zsh
   # CLI Tools
   - gum
   - unzip
@@ -26,9 +71,8 @@ packages:
   # GUI Tools
   - terminator
   - code
-  # Support for different packaging formats
-  - fuse2  # for appimages
-  - flatpak
+  # Browsers
+  - firefox
   # Network packages
   - openssh
   - curl
@@ -47,3 +91,13 @@ packages:
   - qemu-guest-agent
   - spice-vdagent
 
+# Power off the VM after setup is complete
+power_state:
+  mode: poweroff
+  message: "Powering off..."
+  delay: now # minutes to wait
+  timeout: 15 # seconds to wait
+  condition: true
+
+
+final_message: "AgentEnv setup complete."
