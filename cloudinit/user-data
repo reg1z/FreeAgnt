@@ -1,0 +1,49 @@
+#cloud-config
+users:
+  - name: arch
+    password: arch
+    chpasswd:
+      expire: false
+    ssh_pwauth: true
+
+packages:
+  # Core packages
+  - git
+  - base-devel
+  - gnome
+  - polkit-gnome
+  # CLI Tools
+  - gum
+  - unzip
+  - 7zip  # the actual 7zip package name in Arch (june 2025)
+  - less
+  - jq
+  - nano
+  - vi
+  - vim
+  - neovim
+  - tmux
+  # GUI Tools
+  - terminator
+  - code
+  # Support for different packaging formats
+  - fuse2  # for appimages
+  - flatpak
+  # Network packages
+  - openssh
+  - curl
+  - bind
+  - iproute2
+  # Node.js packages (from original user-data)
+  - node-gyp
+  - semver
+  - nodejs
+  - pnpm
+  # Programming languages (from setup-langs.sh)
+  - typescript
+  - rust
+  - go
+  # VM guest packages (copy/paste functionality, etc.)
+  - qemu-guest-agent
+  - spice-vdagent
+

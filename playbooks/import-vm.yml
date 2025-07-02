@@ -1,0 +1,35 @@
+- name: Build VM
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+    - name: Get ansible_env
+      ansible.builtin.setup:
+        filter: ansible_env
+
+    - name: Create Machines directory
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/arch-boxes/Machines"
+        state: directory
+
+    - name: Copy .qcow2 image to libvirt system directory
+      ansible.builtin.copy:
+        src: "{{ ansible_env.HOME }}/arch-boxes/Arch-Linux-x86_64-cloudimg.qcow2"
+        dest: "/var/lib/libvirt/images/AgentEnv.qcow2"
+        remote_src: yes
+      become: yes
+
+    - name: Import Arch Linux .qcow2 image using libvirt (system session)
+      ansible.builtin.shell: |
+        virt-install \
+          --connect qemu:///system \
+          --name AgentEnv \
+          --memory 2048 \
+          --vcpus 2 \
+          --disk path=/var/lib/libvirt/images/AgentEnv.qcow2,format=qcow2 \
+          --import \
+          --os-variant archlinux \
+          --network default \
+          --graphics spice \
+          --noautoconsole
+      become: yes
