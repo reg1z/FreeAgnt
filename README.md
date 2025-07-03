@@ -12,7 +12,8 @@ For a full list of packages used, check the `./cloudinit/user-data` configuratio
 
 
 
-## Current Features
+## Planned Features
+- [ ] GPU Passthrough + CUDA
 - [x] Copy-paste + Screen resizing support via `spice-vdagent`
 
 #### Desktop Environments
@@ -21,12 +22,14 @@ For a full list of packages used, check the `./cloudinit/user-data` configuratio
 - [ ] XFCE
 - [ ] i3
 
-#### Coding Agent Tools Pre-installed (during cloud init setup)
+#### AI Tools Pre-installed (during cloud init setup)
 - [x] [Claude Code](https://github.com/anthropics/claude-code) (via npm package)
 - [x] [Gemini CLI](https://github.com/google-gemini/gemini-cli) (via npm package)
 - [ ] [OpenAI Codex](https://github.com/openai/codex) (via latest GitHub release)
 - [ ] [Warp Terminal](https://www.warp.dev/) (`.tar.zst` via [Official Website Download Page](https://www.warp.dev/download))
 - [ ] Cursor IDE (`AppImage` via [Official Website Download](https://cursor.com/downloads))
+- [ ] Ollama
+- [ ] n8n (self-hosted, docker)
 
 #### Shell
 - [x] zsh (system default)
