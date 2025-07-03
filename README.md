@@ -1,4 +1,5 @@
-# FreeAgnt
+![](assets/banner.png)
+
 An Ansible playbook that gives you an isolated, pre-built, ~~Debian~~ Arch development environment tailored for AI-integrated workflows.
 
 **(WIP)**
