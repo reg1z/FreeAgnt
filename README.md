@@ -13,6 +13,7 @@ For a full list of packages used, check the `./cloudinit/user-data` configuratio
 
 
 ## Current Features
+- [x] Copy-paste + Screen resizing support via `spice-vdagent`
 
 #### Desktop Environments
 - [x] GNOME
@@ -34,14 +35,43 @@ For a full list of packages used, check the `./cloudinit/user-data` configuratio
 - [ ] fish
 - [ ] xonsh
 
-#### Installed Languages, Package Managers, and Repos-Accessible
+#### Terminal
+- [x] GNOME Terminal
+- [x] tmux
+- [ ] Kitty
+
+#### Editors
+- [x] nano
+- [x] vi
+- [x] vim
+- [x] neovim
+- [ ] VScode (flatpak)
+
+#### Various Languages, Package Managers, and Repos-Accessible
+- [x] Flatpak
+- [ ] Snap (not planned, but may provide an option for snap enjoyers)
 - [x] pacman (Arch's package manager)
 - [ ] AUR + yay
-- [x] node + pnpm
+- [x] nodejs + pnpm
 - [x] python + pip
-- [ ] Go
+- [x] Go
+- [x] Rust / cargo
 - [ ] perl
 
+#### Tools
+- [x] docker
+  - [x] docker-compose
+  - [ ] docker without sudo (do the people want this?)
+- [x] openssh
+- [x] gcc
+
+#### Browser
+- [x] Firefox
+- [x] GNOME Web
+- [ ] Zen
+- [ ] Qutebrowser
+- [ ] Chromium
+- [ ] Chrome
 
 ## Original Goals
 - Automate setup of an isolated Virtual Machine facilitating a secure development environment where AI agents can securely roam free.
