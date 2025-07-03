@@ -25,22 +25,28 @@ resize_rootfs: true
 user:
   uid: 1000
   name: arch
-  chpasswd:
-    expire: false
-    users:
-    - { name: arch, password: arch, type: text }
+  gecos: arch
   lock_passwd: false
   ssh_pwauth: true
-  sudo: null
+  sudo: ALL=(ALL) NOPASSWD:ALL
   groups:
     - wheel
     - sudo
   shell: /usr/bin/zsh
 
-# Configure SSH
-disable_root: true
+# Set plain text passwords for both root and arch user
+chpasswd:
+  expire: false
+  users:
+    - { name: root, password: root, type: text }
+    - { name: arch, password: arch, type: text }
+
+# Configure SSH - temporarily enable root for debugging
+disable_root: false
 allow_public_ssh_keys: true # If true, will import the public SSH keys from the datasource's metadata to the users's .ssh/authorized_keys file.
 # ssh_authorized_keys: # Add your public SSH keys here (array/list)
+
+
 
 # Update the system and install packages
 package_update: true
@@ -57,23 +63,16 @@ packages:
   - flatpak
   # Shells
   - zsh
-  # CLI Tools
-  - gum
-  - unzip
-  - 7zip  # the actual 7zip package name in Arch (june 2025)
-  - less
-  - jq
-  - nano
-  - vi
-  - vim
-  - neovim
-  - tmux
-  # GUI Tools
-  - terminator
-  - code
+  # dev tools
+  - docker
+  - docker-compose
+  - rsync
+  - gcc
   # Browsers
   - firefox
   # Network packages
+  - networkmanager
+  - network-manager-applet
   - openssh
   - curl
   - bind
@@ -87,17 +86,107 @@ packages:
   - typescript
   - rust
   - go
+  - perl 
   # VM guest packages (copy/paste functionality, etc.)
   - qemu-guest-agent
   - spice-vdagent
+  # CLI Tools
+  - gum
+  - unzip
+  - 7zip  # the actual 7zip package name in Arch (june 2025)
+  - less
+  - jq
+  - nano
+  - vi
+  - vim
+  - neovim
+  - tmux
 
+# Configure display manager and services
+runcmd:
+  # Enable GDM display manager (runs as root)
+  - systemctl enable gdm.service
+  - systemctl set-default graphical.target
+  - systemctl enable NetworkManager.service
+  # Enable guest services for better VM integration (runs as root)
+  - systemctl enable qemu-guest-agent.service
+  - systemctl enable spice-vdagent.service
+  # Configure pnpm for arch user (note: these run as arch user)
+  - su - arch -c "mkdir -p ~/.local/share/pnpm"
+  - su - arch -c "pnpm config set prefix ~/.local/share/pnpm"
+  # Install oh-my-zsh
+  - su - arch -c 'sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"'
+  # Add global package directory to $PATH for arch user
+  # bash
+  - su - arch -c "echo 'export PATH=\"\$HOME/.local/share/pnpm:\$PATH\"' >> ~/.bashrc"
+  - su - arch -c 'echo "export PNPM_HOME=/home/arch/.local/share/pnpm"' >> ~/.bashrc
+  # zsh
+  - su - arch -c "echo 'export PATH=\"\$HOME/.local/share/pnpm:\$PATH\"' >> ~/.zshrc"
+  - su - arch -c 'echo "export PNPM_HOME=/home/arch/.local/share/pnpm"' >> ~/.zshrc
+  # Install Claude Code
+  - su - arch -c "pnpm install -g @anthropic-ai/claude-code"
+  # Install Gemini CLI
+  - su - arch -c "pnpm install -g @google/gemini-cli"
+  # Install OpenAI Codex
+  # Install warp
+  # Install Cursor
+  # Download wallpapers
+  - su - arch -c "mkdir -p /home/arch/Pictures"
+  - su - arch -c 'curl -fsSL https://raw.githubusercontent.com/reg1z/agent-env/refs/heads/main/assets/wallpapers/head-2560x1440.png -o /home/arch/Pictures/head-2560x1440.png'
+  - su - arch -c 'curl -fsSL https://raw.githubusercontent.com/reg1z/agent-env/refs/heads/main/assets/wallpapers/hat-2560x1440.png -o /home/arch/Pictures/hat-2560x1440.png'
+  - su - arch -c 'curl -fsSL https://raw.githubusercontent.com/reg1z/agent-env/refs/heads/main/assets/wallpapers/free-agnt-head-2560x1440.png -o /home/arch/Pictures/free-agnt-head-2560x1440.png'
+  # Add debugging commands
+  - echo "=== Cloud-init debugging ===" >> /var/log/cloud-init-debug.log
+  - echo "Users in /etc/passwd:" >> /var/log/cloud-init-debug.log
+  - grep -E "(root|arch)" /etc/passwd >> /var/log/cloud-init-debug.log
+  - echo "Shadow file entries:" >> /var/log/cloud-init-debug.log
+  - grep -E "(root|arch)" /etc/shadow >> /var/log/cloud-init-debug.log
+  - echo "Groups:" >> /var/log/cloud-init-debug.log
+  - groups arch >> /var/log/cloud-init-debug.log 2>&1
+  - echo "Testing arch user login:" >> /var/log/cloud-init-debug.log
+  - su - arch -c "whoami" >> /var/log/cloud-init-debug.log 2>&1
+  - echo "Display manager status:" >> /var/log/cloud-init-debug.log
+  - systemctl is-enabled gdm.service >> /var/log/cloud-init-debug.log 2>&1
+  - echo "=== End basic debugging ===" >> /var/log/cloud-init-debug.log
+  # Create a script to set GNOME preferences on first login
+  - echo "=== Creating GNOME setup script ===" >> /var/log/cloud-init-debug.log
+  - mkdir -p /home/arch/.config/autostart
+  - echo '[Desktop Entry]' > /home/arch/.config/autostart/gnome-setup.desktop
+  - echo 'Type=Application' >> /home/arch/.config/autostart/gnome-setup.desktop
+  - echo 'Name=GNOME Setup' >> /home/arch/.config/autostart/gnome-setup.desktop
+  - echo 'Exec=/home/arch/.local/bin/gnome-setup.sh' >> /home/arch/.config/autostart/gnome-setup.desktop
+  - echo 'Hidden=false' >> /home/arch/.config/autostart/gnome-setup.desktop
+  - echo 'NoDisplay=false' >> /home/arch/.config/autostart/gnome-setup.desktop
+  - echo 'X-GNOME-Autostart-enabled=true' >> /home/arch/.config/autostart/gnome-setup.desktop
+  - echo 'X-GNOME-Autostart-Delay=1' >> /home/arch/.config/autostart/gnome-setup.desktop
+  - mkdir -p /home/arch/.local/bin
+  - echo '#!/bin/bash' > /home/arch/.local/bin/gnome-setup.sh
+  - echo '# GNOME setup script - runs on first login' >> /home/arch/.local/bin/gnome-setup.sh
+  - echo 'LOG_FILE="/home/arch/.gnome-setup.log"' >> /home/arch/.local/bin/gnome-setup.sh
+  - echo 'echo "=== GNOME Setup Script Started $(date) ===" >> "$LOG_FILE"' >> /home/arch/.local/bin/gnome-setup.sh
+  - echo 'sleep 2' >> /home/arch/.local/bin/gnome-setup.sh
+  - echo 'echo "Setting wallpaper..." >> "$LOG_FILE"' >> /home/arch/.local/bin/gnome-setup.sh
+  - echo 'gsettings set org.gnome.desktop.background picture-uri "file:///home/arch/Pictures/free-agnt-head-2560x1440.png" 2>> "$LOG_FILE"' >> /home/arch/.local/bin/gnome-setup.sh
+  - echo 'gsettings set org.gnome.desktop.background picture-uri-dark "file:///home/arch/Pictures/free-agnt-head-2560x1440.png" 2>> "$LOG_FILE"' >> /home/arch/.local/bin/gnome-setup.sh
+  - echo 'echo "Setting dark theme..." >> "$LOG_FILE"' >> /home/arch/.local/bin/gnome-setup.sh
+  - echo 'gsettings set org.gnome.desktop.interface color-scheme "prefer-dark" 2>> "$LOG_FILE"' >> /home/arch/.local/bin/gnome-setup.sh
+  - echo 'echo "Setting accent color..." >> "$LOG_FILE"' >> /home/arch/.local/bin/gnome-setup.sh
+  - echo 'gsettings set org.gnome.desktop.interface accent-color "slate" 2>> "$LOG_FILE"' >> /home/arch/.local/bin/gnome-setup.sh
+  - echo 'echo "Verifying settings..." >> "$LOG_FILE"' >> /home/arch/.local/bin/gnome-setup.sh
+  - echo 'gsettings get org.gnome.desktop.background picture-uri >> "$LOG_FILE"' >> /home/arch/.local/bin/gnome-setup.sh
+  - echo 'gsettings get org.gnome.desktop.interface color-scheme >> "$LOG_FILE"' >> /home/arch/.local/bin/gnome-setup.sh
+  - echo 'echo "Removing autostart entry..." >> "$LOG_FILE"' >> /home/arch/.local/bin/gnome-setup.sh
+  - echo 'rm -f /home/arch/.config/autostart/gnome-setup.desktop' >> /home/arch/.local/bin/gnome-setup.sh
+  - echo 'echo "=== GNOME Setup Script Completed $(date) ===" >> "$LOG_FILE"' >> /home/arch/.local/bin/gnome-setup.sh
+  - chmod +x /home/arch/.local/bin/gnome-setup.sh
+  - chown -R arch:arch /home/arch/.config /home/arch/.local
+  - echo "GNOME setup script created and will run on first login" >> /var/log/cloud-init-debug.log
 # Power off the VM after setup is complete
 power_state:
   mode: poweroff
   message: "Powering off..."
   delay: now # minutes to wait
-  timeout: 15 # seconds to wait
+  # timeout: 15 # seconds to wait
   condition: true
-
 
 final_message: "AgentEnv setup complete."

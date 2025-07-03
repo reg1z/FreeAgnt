@@ -19,17 +19,111 @@
         remote_src: yes
       become: yes
 
+    - name: Resize disk image to desired size
+      ansible.builtin.shell: |
+        qemu-img resize /var/lib/libvirt/images/AgentEnv.qcow2 100G
+      become: yes
+
+    - name: Check for existing VMs and determine available name
+      ansible.builtin.shell: |
+        base_name="AgentEnv"
+        counter=1
+        vm_name="$base_name"
+        
+        while virsh --connect qemu:///system list --all --name | grep -q "^${vm_name}$"; do
+          counter=$((counter + 1))
+          vm_name="${base_name}${counter}"
+        done
+        
+        echo "$vm_name"
+      register: available_vm_name
+      become: yes
+
+    - name: Set VM name fact
+      ansible.builtin.set_fact:
+        vm_name: "{{ available_vm_name.stdout }}"
+
+    - name: Copy disk image with unique name if needed
+      ansible.builtin.copy:
+        src: "/var/lib/libvirt/images/AgentEnv.qcow2"
+        dest: "/var/lib/libvirt/images/{{ vm_name }}.qcow2"
+        remote_src: yes
+      become: yes
+      when: vm_name != "AgentEnv"
+
     - name: Import Arch Linux .qcow2 image using libvirt (system session)
       ansible.builtin.shell: |
         virt-install \
           --connect qemu:///system \
-          --name AgentEnv \
-          --memory 2048 \
-          --vcpus 2 \
-          --disk path=/var/lib/libvirt/images/AgentEnv.qcow2,format=qcow2 \
+          --name {{ vm_name }} \
+          --memory 4096 \
+          --vcpus 4 \
+          --disk path=/var/lib/libvirt/images/{{ vm_name }}.qcow2,format=qcow2,size=100 \
+          --cloud-init user-data={{ ansible_env.HOME }}/Sync/repos/agent-env/cloudinit/user-data \
           --import \
           --os-variant archlinux \
           --network default \
           --graphics spice \
           --noautoconsole
+      register: virt_install
       become: yes
+
+    - name: Show virt-install output
+      ansible.builtin.debug:
+        var: virt_install
+
+    - name: Inform user about cloud-init process
+      ansible.builtin.debug:
+        msg: |
+          VM '{{ vm_name }}' has been created and is starting up.
+          Cloud-init is now installing packages and configuring the system.
+          This process will take several minutes. The VM will automatically power off when complete.
+          
+          Monitoring VM status...
+
+    - name: Wait for VM to start running
+      ansible.builtin.shell: |
+        for i in {1..30}; do
+          if virsh --connect qemu:///system list --state-running --name | grep -q "^{{ vm_name }}$"; then
+            echo "VM is running"
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "VM did not start within 60 seconds"
+        exit 1
+      register: vm_start_check
+      become: yes
+
+    - name: Show VM started message
+      ansible.builtin.debug:
+        msg: "✓ VM '{{ vm_name }}' is now running and cloud-init is processing..."
+
+    - name: Wait for setup to complete (VM will power off)
+      ansible.builtin.shell: |
+        echo "Waiting for cloud-init to complete..."
+        for i in {1..600}; do  # Wait up to 20 minutes
+          if ! virsh --connect qemu:///system list --state-running --name | grep -q "^{{ vm_name }}$"; then
+            echo "VM has powered off - cloud-init complete"
+            exit 0
+          fi
+          if [ $((i % 30)) -eq 0 ]; then  # Show progress every minute
+            echo "Still waiting... (${i}/600 checks, $((i*2/60)) minutes elapsed)"
+          fi
+          sleep 2
+        done
+        echo "VM did not power off within 20 minutes - cloud-init may have failed"
+        exit 1
+      register: cloud_init_completion
+      become: yes
+
+    - name: Show cloud-init completion status
+      ansible.builtin.debug:
+        msg: |
+          ✓ Cloud-init setup complete!
+          VM '{{ vm_name }}' has been successfully configured and is now powered off.
+          
+          To start the VM: virsh --connect qemu:///system start {{ vm_name }}
+          To connect via console: virsh --connect qemu:///system console {{ vm_name }}
+          
+          Default login: arch/arch

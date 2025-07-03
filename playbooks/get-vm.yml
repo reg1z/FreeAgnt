@@ -6,9 +6,9 @@
   vars:
     mirror1: https://mirrors.mit.edu/archlinux/images/latest
     mirror2: https://mirrors.bjg.at/arch/images/latest
-    image: Arch-Linux-x86_64-basic.qcow2
-    hash: Arch-Linux-x86_64-basic.qcow2.SHA256
-    sig: Arch-Linux-x86_64-basic.qcow2.sig
+    image: Arch-Linux-x86_64-cloudimg.qcow2
+    hash: Arch-Linux-x86_64-cloudimg.qcow2.SHA256
+    sig: Arch-Linux-x86_64-cloudimg.qcow2.sig
 
   tasks:
     - name: Get ansible_env
@@ -35,18 +35,18 @@
 
     - name: Download Signature
       ansible.builtin.get_url:
-        url: "{{ mirror1  }}/{{ sig }}"
+        url: "{{ mirror2  }}/{{ sig }}"
         dest: "{{ ansible_env.HOME }}/arch-boxes/{{ sig }}"
       register: image_hash
 
     - name: Download Hash (SHA256)
       ansible.builtin.get_url:
-        url: "{{ mirror1  }}/{{ hash }}"
+        url: "{{ mirror2  }}/{{ hash }}"
         dest: "{{ ansible_env.HOME }}/arch-boxes/{{ hash }}"
 
     - name: Download Image
       ansible.builtin.get_url: 
-        url: "{{ mirror1  }}/{{ image }}"
+        url: "{{ mirror2  }}/{{ image }}"
         dest: "{{ ansible_env.HOME }}/arch-boxes/{{ image }}"
     
     - name: Check signature
@@ -72,10 +72,3 @@
       ansible.builtin.shell: |
         KEY_ID=$(gpg --show-keys "{{ ansible_env.HOME }}/arch-boxes/arch-boxes-pgp.asc" | sed -n '2p' | awk '{print $1}')
         gpg --delete-key --batch --yes "$KEY_ID"
-
-        
-        
-
-
-  
-    #- name: Verify Image
